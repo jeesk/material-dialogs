@@ -99,7 +99,7 @@ object MDUtil {
     return ContextCompat.getDrawable(context, res)
   }
 
-  @RestrictTo(LIBRARY_GROUP) @ColorInt
+  @ColorInt
   fun resolveColor(
     context: Context,
     @ColorRes res: Int? = null,

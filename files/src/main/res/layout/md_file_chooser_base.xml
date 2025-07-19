@@ -7,6 +7,18 @@
     android:orientation="vertical"
     >
 
+ <androidx.recyclerview.widget.RecyclerView
+     android:id="@+id/directory_tree"
+     android:orientation="horizontal"
+     android:scrollbars="none"
+     android:paddingLeft="@dimen/file_chooser_item_horizontal_padding"
+     android:paddingRight="@dimen/file_chooser_item_horizontal_padding"
+     android:layout_width="match_parent"
+     android:layout_height="50dp">
+ </androidx.recyclerview.widget.RecyclerView>
+
+
+
   <com.afollestad.materialdialogs.internal.list.DialogRecyclerView
       android:id="@+id/list"
       android:layout_width="match_parent"

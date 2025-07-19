@@ -20,17 +20,17 @@ package com.afollestad.materialdialogs.files
 import android.annotation.SuppressLint
 import android.content.Context
 import android.widget.TextView
+import android.widget.Toast
 import androidx.annotation.CheckResult
 import androidx.annotation.StringRes
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.afollestad.materialdialogs.MaterialDialog
 import com.afollestad.materialdialogs.WhichButton.POSITIVE
 import com.afollestad.materialdialogs.actions.setActionButtonEnabled
 import com.afollestad.materialdialogs.customview.customView
 import com.afollestad.materialdialogs.customview.getCustomView
 import com.afollestad.materialdialogs.files.util.getExternalFilesDir
-import com.afollestad.materialdialogs.files.util.hasReadStoragePermission
-import com.afollestad.materialdialogs.files.util.hasWriteStoragePermission
 import com.afollestad.materialdialogs.internal.list.DialogRecyclerView
 import com.afollestad.materialdialogs.utils.MDUtil.maybeSetTextColor
 import java.io.File
@@ -67,16 +67,10 @@ fun MaterialDialog.folderChooser(
   var actualFilter: FileFilter = filter
 
   if (allowFolderCreation) {
-    check(hasWriteStoragePermission()) {
-      "You must have the WRITE_EXTERNAL_STORAGE permission first."
-    }
     if (filter == null) {
       actualFilter = { !it.isHidden && it.canWrite() }
     }
   } else {
-    check(hasReadStoragePermission()) {
-      "You must have the READ_EXTERNAL_STORAGE permission first."
-    }
     if (filter == null) {
       actualFilter = { !it.isHidden && it.canRead() }
     }
@@ -91,25 +85,55 @@ fun MaterialDialog.folderChooser(
 
   val customView = getCustomView()
   val list: DialogRecyclerView = customView.findViewById(R.id.list)
+  val directoryTree: RecyclerView = customView.findViewById(R.id.directory_tree)
   val emptyText: TextView = customView.findViewById(R.id.empty_text)
   emptyText.setText(emptyTextRes)
   emptyText.maybeSetTextColor(windowContext, R.attr.md_color_content)
 
   list.attach(this)
   list.layoutManager = LinearLayoutManager(windowContext)
+  directoryTree.layoutManager =
+    LinearLayoutManager(windowContext, LinearLayoutManager.HORIZONTAL, false)
+  // 添加分隔符
+  directoryTree.addItemDecoration(PathDividerDecoration(windowContext))
 
   val adapter = FileChooserAdapter(
-      dialog = this,
-      initialFolder = initialDirectory,
-      waitForPositiveButton = waitForPositiveButton,
-      emptyView = emptyText,
-      onlyFolders = true,
-      filter = actualFilter,
-      allowFolderCreation = allowFolderCreation,
-      folderCreationLabel = folderCreationLabel,
-      callback = selection
+    dialog = this,
+    initialFolder = initialDirectory,
+    waitForPositiveButton = waitForPositiveButton,
+    emptyView = emptyText,
+    onlyFolders = true,
+    filter = actualFilter,
+    allowFolderCreation = allowFolderCreation,
+    folderCreationLabel = folderCreationLabel,
+    callback = selection
   )
   list.adapter = adapter
+  val pathComponents = mutableListOf<String>()
+  pathComponents.addAll(initialDirectory.canonicalPath.split("/").filter { obj -> obj != "" })
+  fun updatePathDisplay() {
+    val ad = PathAdapter(pathComponents, {
+      ad, clickedPosition ->
+      val subList =  try{
+        ad.pathComponents.subList(0, clickedPosition + 1)
+      }catch (e: Exception){
+        Toast.makeText(context,"选择文件夹异常，请向开发者反馈问题。", Toast.LENGTH_LONG).show()
+        emptyList<String>()
+      }
+      val filePath = subList.joinToString("/")
+      adapter.switchDirectory(File(filePath))
+      directoryTree.post {
+        directoryTree.smoothScrollToPosition(clickedPosition)
+      }
+    }, {
+      directoryTree.post {
+        directoryTree.smoothScrollToPosition(it)
+      }
+    })
+    directoryTree.adapter = ad
+    ad.scollCallback(pathComponents.size - 1)
+  }
+  updatePathDisplay()
 
   if (waitForPositiveButton && selection != null) {
     positiveButton {

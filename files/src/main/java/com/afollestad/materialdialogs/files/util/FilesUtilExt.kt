@@ -18,8 +18,14 @@
 package com.afollestad.materialdialogs.files.util
 
 import android.Manifest.permission
+import android.content.ContentResolver
 import android.content.Context
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.os.Bundle
+import android.os.Environment
+import android.provider.MediaStore
 import androidx.core.content.ContextCompat
 import com.afollestad.materialdialogs.MaterialDialog
 import com.afollestad.materialdialogs.files.FileFilter
@@ -36,6 +42,163 @@ internal fun File.isExternalStorage(context: Context) =
 
 internal fun File.isRoot() = absolutePath == "/"
 
+val fileUri: Uri by lazy { MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL) }
+
+fun queryAlbumV25ForBothUser(
+  ctx: Context,
+  baseDir: String,
+  needMediaTypeFilter: Boolean = true
+): MutableMap<Long, String> {
+  val maps = mutableMapOf<Long, String>()
+  // 构建查询条件
+  val selection =
+    StringBuilder()
+      .apply {
+        if (needMediaTypeFilter) {
+          //                append("${MediaStore.Files.FileColumns.MEDIA_TYPE} in (1,3)")
+          if (baseDir != "") {
+            append("${MediaStore.Files.FileColumns.DATA} not like '${baseDir + "/%"}' ")
+          }
+        }
+      }
+      .toString()
+  val cursor =
+    ctx.contentResolver.query(
+      fileUri,
+      arrayOf(MediaStore.Files.FileColumns.BUCKET_ID, MediaStore.Files.FileColumns.DATA),
+      selection,
+      null,
+      null)
+  cursor?.use {
+    while (cursor.moveToNext()) {
+      val albumIdIndex = cursor.getColumnIndex(MediaStore.Files.FileColumns.BUCKET_ID)
+      val albumId = cursor.getLong(albumIdIndex)
+      val existAlbumPath = maps.get(albumId)
+      if (existAlbumPath != null) {
+        continue
+      }
+      val dataIndex = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATA)
+      val albumPath = cursor.getString(dataIndex)
+      val path = albumPath.substring(0, albumPath.lastIndexOf("/"))
+      maps[albumId] = path
+    }
+  }
+  return maps
+}
+
+fun queryEmulatedCard(ctx: Context): List<String> {
+  val baseDir = Environment.getExternalStorageDirectory()
+  val rootDir = baseDir.parentFile.canonicalPath
+  val maps = mutableMapOf<Long, String>()
+  if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.O) {
+    maps.putAll(queryAlbumV25ForBothUser(ctx, baseDir!!.canonicalPath))
+    //        } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+  } else {
+    val bundle =
+      Bundle().apply {
+        putString(
+          ContentResolver.QUERY_ARG_SQL_SELECTION,
+          "(${MediaStore.Files.FileColumns.DATA} NOT LIKE '${baseDir!!.canonicalPath + "/%"}' ) ")
+        if (Build.VERSION.SDK_INT >= 30) {
+          putString(
+            "android:query-arg-sql-group-by",
+            "${MediaStore.Files.FileColumns.BUCKET_ID} ")
+        }
+        putString(
+          ContentResolver.QUERY_ARG_SQL_SORT_ORDER,
+          "${MediaStore.Files.FileColumns.BUCKET_ID} ASC")
+      }
+
+    val cursor =
+      ctx.contentResolver.query(
+        fileUri,
+        arrayOf(MediaStore.Files.FileColumns.BUCKET_ID, MediaStore.Files.FileColumns.DATA),
+        bundle,
+        null)
+    cursor?.use {
+      while (cursor.moveToNext()) {
+        val albumIdIndex = cursor.getColumnIndex(MediaStore.Files.FileColumns.BUCKET_ID)
+        val albumId = cursor.getLong(albumIdIndex)
+        val existAlbumPath = maps.get(albumId)
+        if (existAlbumPath != null) {
+          continue
+        }
+        val dataIndex = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATA)
+        val albumPath = cursor.getString(dataIndex)
+        val path = albumPath.substring(0, albumPath.lastIndexOf("/"))
+        maps[albumId] = path
+      }
+    }
+  }
+  val paths = mutableSetOf<String>()
+  maps.entries.forEach {
+    val path = it.value
+    val toOkioPath = File(path).canonicalPath.split("/").filter { obj -> obj != "" }
+    if (toOkioPath.size >= 3) {
+      if (path.startsWith(rootDir)) {
+        paths.add(toOkioPath.subList(0, 3).joinToString("/"))
+      }
+    }
+  }
+  return paths.toMutableList()
+}
+
+fun queryStorage(ctx: Context): List<String> {
+  val baseDir = Environment.getExternalStorageDirectory()
+  val rootDir = baseDir.parentFile.canonicalPath
+  val maps = mutableMapOf<Long, String>()
+  if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.O) {
+    maps.putAll(queryAlbumV25ForBothUser(ctx, rootDir))
+    //        } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+  } else {
+    val bundle =
+      Bundle().apply {
+        putString(
+          ContentResolver.QUERY_ARG_SQL_SELECTION,
+          "(${MediaStore.Files.FileColumns.DATA} NOT LIKE '${rootDir + "/%"}' ) ")
+        if (Build.VERSION.SDK_INT >= 30) {
+          putString(
+            "android:query-arg-sql-group-by",
+            "${MediaStore.Files.FileColumns.BUCKET_ID} ")
+        }
+        putString(
+          ContentResolver.QUERY_ARG_SQL_SORT_ORDER,
+          "${MediaStore.Files.FileColumns.BUCKET_ID} ASC")
+      }
+
+    val cursor =
+      ctx.contentResolver.query(
+        fileUri,
+        arrayOf(MediaStore.Files.FileColumns.BUCKET_ID, MediaStore.Files.FileColumns.DATA),
+        bundle,
+        null)
+    cursor?.use {
+      while (cursor.moveToNext()) {
+        val albumIdIndex = cursor.getColumnIndex(MediaStore.Files.FileColumns.BUCKET_ID)
+        val albumId = cursor.getLong(albumIdIndex)
+        val existAlbumPath = maps.get(albumId)
+        if (existAlbumPath != null) {
+          continue
+        }
+        val dataIndex = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATA)
+        val albumPath = cursor.getString(dataIndex)
+        val path = albumPath.substring(0, albumPath.lastIndexOf("/"))
+        maps[albumId] = path
+      }
+    }
+  }
+  val paths = mutableSetOf<String>()
+  maps.entries.forEach {
+    val path = it.value
+    val toOkioPath = File(path).canonicalPath
+      .split("/").filter { obj -> obj != "" }
+    if (toOkioPath.size == 2) {
+      paths.add(path)
+    }
+  }
+  return paths.toMutableList()
+}
+
 internal fun File.betterParent(
   context: Context,
   writeable: Boolean,
@@ -50,7 +213,11 @@ internal fun File.betterParent(
 
   if ((writeable && !parentToUse.canWrite()) || !parentToUse.canRead()) {
     // We can't access this folder
-    return null
+    // 这里需要判断路径才可以处理
+//    if(hasNotCurrentUserSpace(context)){
+      return parentToUse
+//    }
+//    return null
   }
 
   val folderContent =

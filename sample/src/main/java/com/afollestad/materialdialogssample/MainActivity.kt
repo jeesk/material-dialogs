@@ -21,6 +21,7 @@ import android.content.SharedPreferences
 import android.graphics.Color
 import android.graphics.Color.TRANSPARENT
 import android.os.Bundle
+import android.os.Environment
 import android.text.InputType
 import android.text.method.PasswordTransformationMethod
 import android.view.Menu
@@ -867,8 +868,9 @@ class MainActivity : AppCompatActivity() {
   }
 
   private fun showFolderChooserButtons() = runWithPermissions(WRITE_EXTERNAL_STORAGE) {
+    val ss = Environment.getExternalStorageDirectory()
     MaterialDialog(this).show {
-      folderChooser(context = this@MainActivity, allowFolderCreation = true) { _, folder ->
+      folderChooser(context = this@MainActivity, initialDirectory = ss, allowFolderCreation = true) { _, folder ->
         toast("Selected folder: ${folder.absolutePath}")
       }
       negativeButton(android.R.string.cancel)
@@ -881,7 +883,7 @@ class MainActivity : AppCompatActivity() {
   private fun showFolderChooserFilter() = runWithPermissions(READ_EXTERNAL_STORAGE) {
     MaterialDialog(this).show {
       folderChooser(
-          context = this@MainActivity, filter = { it.name.startsWith("a", true) }) { _, folder ->
+          context = this@MainActivity, allowFolderCreation = true, filter = { it.name.startsWith("a", true) }) { _, folder ->
         toast("Selected folder: ${folder.absolutePath}")
       }
       debugMode(debugMode)

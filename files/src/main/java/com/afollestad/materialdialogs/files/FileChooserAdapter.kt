@@ -15,6 +15,7 @@
  */
 package com.afollestad.materialdialogs.files
 
+import android.os.Environment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.View.OnClickListener
@@ -32,6 +33,8 @@ import com.afollestad.materialdialogs.files.util.betterParent
 import com.afollestad.materialdialogs.files.util.friendlyName
 import com.afollestad.materialdialogs.files.util.hasParent
 import com.afollestad.materialdialogs.files.util.jumpOverEmulated
+import com.afollestad.materialdialogs.files.util.queryEmulatedCard
+import com.afollestad.materialdialogs.files.util.queryStorage
 import com.afollestad.materialdialogs.files.util.setVisible
 import com.afollestad.materialdialogs.list.getItemSelector
 import com.afollestad.materialdialogs.utils.MDUtil.isColorDark
@@ -90,15 +93,18 @@ internal class FileChooserAdapter(
 
   fun itemClicked(index: Int) {
     val parent = currentFolder.betterParent(dialog.context, allowFolderCreation, filter)
+/*
     if (parent != null && index == goUpIndex()) {
       // go up
       switchDirectory(parent)
       return
-    } else if (currentFolder.canWrite() && allowFolderCreation && index == newFolderIndex()) {
+    }
+*/
+      if (currentFolder.canWrite() && allowFolderCreation && index == newFolderIndex()) {
       // New folder
       dialog.showNewFolderCreator(
-          parent = currentFolder,
-          folderCreationLabel = folderCreationLabel
+        parent = currentFolder,
+        folderCreationLabel = folderCreationLabel
       ) {
         // Refresh view
         switchDirectory(currentFolder)
@@ -127,34 +133,78 @@ internal class FileChooserAdapter(
     }
   }
 
-  private fun switchDirectory(directory: File) {
+  fun switchDirectory(directory: File) {
+    val rv = dialog.findViewById<RecyclerView>(R.id.directory_tree)
+    if (rv != null && rv.adapter != null) {
+      val adpter = rv.adapter as PathAdapter
+      val filePaths = directory.canonicalPath.split("/").filter { obj -> obj != "" }
+      adpter.pathComponents.clear()
+      adpter.pathComponents.addAll(filePaths)
+      adpter.notifyDataSetChanged()
+      adpter.scollCallback(adpter.pathComponents.size - 1)
+    }
     listingJob?.cancel()
     listingJob = GlobalScope.launch(Main) {
       if (onlyFolders) {
         selectedFile = directory
         dialog.setActionButtonEnabled(POSITIVE, true)
       }
-
       currentFolder = directory
       dialog.title(text = directory.friendlyName(dialog.context))
-
       val result = withContext(IO) {
         val rawContents = directory.listFiles() ?: emptyArray()
         if (onlyFolders) {
           rawContents
-              .filter { it.isDirectory && filter?.invoke(it) ?: true }
-              .sortedBy { it.name.toLowerCase(Locale.getDefault()) }
+            .filter { it.isDirectory && filter?.invoke(it) ?: true }
+            .sortedBy { it.name.toLowerCase(Locale.getDefault()) }
         } else {
           rawContents
-              .filter { filter?.invoke(it) ?: true }
-              .sortedWith(compareBy({ !it.isDirectory }, {
-                it.nameWithoutExtension.toLowerCase(Locale.getDefault())
-              }))
+            .filter { filter?.invoke(it) ?: true }
+            .sortedWith(compareBy({ !it.isDirectory }, {
+              it.nameWithoutExtension.toLowerCase(Locale.getDefault())
+            }))
         }
       }
-
-      contents = result.apply {
-        emptyView.setVisible(isEmpty())
+      if (result.size != 0) {
+        contents = result.apply {
+          emptyView.setVisible(isEmpty())
+        }
+      } else {
+          val paths = directory.canonicalPath.split("/").filter { obj -> obj != "" }
+          if (paths.size == 1) {
+            val queryNotCurrentUserSpace = queryStorage(dialog.context)
+            if (queryNotCurrentUserSpace.size > 0) {
+              val initList = mutableListOf<File>()
+              val baseDir = Environment.getExternalStorageDirectory()
+              initList.add(baseDir.parentFile)
+              for (s in queryNotCurrentUserSpace) {
+                initList.add(File(s))
+              }
+              contents = initList.apply {
+                emptyView.setVisible(isEmpty())
+              }
+            } else {
+              contents = emptyList()
+              emptyView.setVisible(true)
+            }
+          } else if (paths.size == 2) {
+              val baseDir = Environment.getExternalStorageDirectory()
+              val initList = mutableListOf<File>()
+              initList.add(File(baseDir.canonicalPath))
+              val queryNotCurrentUserSpace = queryEmulatedCard(dialog.context)
+              if (queryNotCurrentUserSpace.size > 0) {
+                for (s in queryNotCurrentUserSpace) {
+                  initList.add(File(s))
+                }
+              }
+              contents = initList.apply {
+                emptyView.setVisible(isEmpty())
+              }
+            } else {
+              contents = result.apply {
+                emptyView.setVisible(isEmpty())
+              }
+            }
       }
       notifyDataSetChanged()
     }
@@ -162,9 +212,11 @@ internal class FileChooserAdapter(
 
   override fun getItemCount(): Int {
     var count = contents?.size ?: 0
+/*
     if (currentFolder.hasParent(dialog.context, allowFolderCreation, filter)) {
       count += 1
     }
+*/
     if (allowFolderCreation && currentFolder.canWrite()) {
       count += 1
     }
@@ -176,7 +228,7 @@ internal class FileChooserAdapter(
     viewType: Int
   ): FileChooserViewHolder {
     val view = LayoutInflater.from(parent.context)
-        .inflate(R.layout.md_file_chooser_item, parent, false)
+      .inflate(R.layout.md_file_chooser_item, parent, false)
     view.background = dialog.getItemSelector()
 
     val viewHolder = FileChooserViewHolder(view, this)
@@ -188,47 +240,55 @@ internal class FileChooserAdapter(
     holder: FileChooserViewHolder,
     position: Int
   ) {
+/*
     val currentParent = currentFolder.betterParent(dialog.context, allowFolderCreation, filter)
     if (currentParent != null && position == goUpIndex()) {
       // Go up
       holder.iconView.setImageResource(
-          if (isLightTheme) R.drawable.icon_return_dark
-          else R.drawable.icon_return_light
+        if (isLightTheme) R.drawable.icon_return_dark
+        else R.drawable.icon_return_light
       )
       holder.nameView.text = currentParent.name
       holder.itemView.isActivated = false
+      holder.itemView.visibility = View.GONE
       return
     }
+*/
 
     if (allowFolderCreation && currentFolder.canWrite() && position == newFolderIndex()) {
       // New folder
       holder.iconView.setImageResource(
-          if (isLightTheme) R.drawable.icon_new_folder_dark
-          else R.drawable.icon_new_folder_light
+        if (isLightTheme) R.drawable.icon_new_folder_dark
+        else R.drawable.icon_new_folder_light
       )
       holder.nameView.text = dialog.windowContext.getString(
-          folderCreationLabel ?: R.string.files_new_folder
+        folderCreationLabel ?: R.string.files_new_folder
       )
       holder.itemView.isActivated = false
       return
     }
-
+    if (contents == null) {
+      return
+    }
     val actualIndex = actualIndex(position)
-    val item = contents!![actualIndex]
-    holder.iconView.setImageResource(item.iconRes())
-    holder.nameView.text = item.name
-    holder.itemView.isActivated = selectedFile?.absolutePath == item.absolutePath ?: false
+    try {
+      val item = contents!![actualIndex]
+      holder.iconView.setImageResource(item.iconRes())
+      holder.nameView.text = item.name
+      holder.itemView.isActivated = selectedFile?.absolutePath == item.absolutePath ?: false
+    } catch (e: Exception) {
+      println(e)
+    }
   }
 
-  private fun goUpIndex() = if (currentFolder.hasParent(dialog.context, allowFolderCreation, filter)) 0 else -1
+  private fun goUpIndex() =
+    if (currentFolder.hasParent(dialog.context, allowFolderCreation, filter)) 0 else -1
 
-  private fun newFolderIndex() = if (currentFolder.hasParent(dialog.context, allowFolderCreation, filter)) 1 else 0
+  private fun newFolderIndex() =
+    if (currentFolder.hasParent(dialog.context, allowFolderCreation, filter)) 0 else -1
 
   private fun actualIndex(position: Int): Int {
     var actualIndex = position
-    if (currentFolder.hasParent(dialog.context, allowFolderCreation, filter)) {
-      actualIndex -= 1
-    }
     if (currentFolder.canWrite() && allowFolderCreation) {
       actualIndex -= 1
     }
@@ -249,6 +309,11 @@ internal class FileChooserAdapter(
     if (selectedFile == null) return -1
     else if (contents?.isEmpty() == true) return -1
     val index = contents?.indexOfFirst { it.absolutePath == selectedFile?.absolutePath } ?: -1
-    return if (index > -1 && currentFolder.hasParent(dialog.context, allowFolderCreation, filter)) index + 1 else index
+    return if (index > -1 && currentFolder.hasParent(
+        dialog.context,
+        allowFolderCreation,
+        filter
+      )
+    ) index + 1 else index
   }
 }

@@ -31,8 +31,6 @@ import com.afollestad.materialdialogs.actions.setActionButtonEnabled
 import com.afollestad.materialdialogs.customview.customView
 import com.afollestad.materialdialogs.customview.getCustomView
 import com.afollestad.materialdialogs.files.util.getExternalFilesDir
-import com.afollestad.materialdialogs.files.util.hasReadStoragePermission
-import com.afollestad.materialdialogs.files.util.hasWriteStoragePermission
 import com.afollestad.materialdialogs.input.getInputField
 import com.afollestad.materialdialogs.input.input
 import com.afollestad.materialdialogs.internal.list.DialogRecyclerView
@@ -75,16 +73,10 @@ fun MaterialDialog.fileChooser(
   var actualFilter: FileFilter = filter
 
   if (allowFolderCreation) {
-    check(hasWriteStoragePermission()) {
-      "You must have the WRITE_EXTERNAL_STORAGE permission first."
-    }
     if (filter == null) {
       actualFilter = { !it.isHidden && it.canWrite() }
     }
   } else {
-    check(hasReadStoragePermission()) {
-      "You must have the READ_EXTERNAL_STORAGE permission first."
-    }
     if (filter == null) {
       actualFilter = { !it.isHidden && it.canRead() }
     }
