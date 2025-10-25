@@ -152,10 +152,17 @@ internal class FileChooserAdapter(
       currentFolder = directory
       dialog.title(text = directory.friendlyName(dialog.context))
       val result = withContext(IO) {
-        val rawContents = directory.listFiles() ?: emptyArray()
+        var rawContents = directory.listFiles() ?: emptyArray()
+        if(rawContents.size == 0){
+          if(directory.name == "storage"){
+            rawContents = arrayOf(Environment.getExternalStorageDirectory().parentFile)
+          }
+        }
         if (onlyFolders) {
           rawContents
-            .filter { it.isDirectory && filter?.invoke(it) ?: true }
+            .filter {
+              it.isDirectory && (filter?.invoke(it)  ?: true || it.canonicalPath == Environment.getExternalStorageDirectory().parentFile.canonicalPath)
+            }
             .sortedBy { it.name.toLowerCase(Locale.getDefault()) }
         } else {
           rawContents

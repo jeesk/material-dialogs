@@ -26,8 +26,6 @@ allprojects {
     )
     maven { url 'https://jitpack.io' }
     mavenLocal()
-    maven { url 'https://nexus.lnks888.heiyu.space/repository/repository_android/' }
-    maven { url "https://nexus.lnks888.heiyu.space/repository/google-android-maven/" }
     maven { url 'https://nexus.lk.pgyer.eu.org/repository/repository_android/' }
     maven { url "https://nexus.lk.pgyer.eu.org/repository/google-android-maven/" }
   }
