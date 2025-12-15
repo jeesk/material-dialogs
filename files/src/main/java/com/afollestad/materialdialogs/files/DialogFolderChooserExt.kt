@@ -114,10 +114,10 @@ fun MaterialDialog.folderChooser(
   fun updatePathDisplay() {
     val ad = PathAdapter(pathComponents, {
       ad, clickedPosition ->
-      val subList =  try{
+      val subList = try {
         ad.pathComponents.subList(0, clickedPosition + 1)
-      }catch (e: Exception){
-        Toast.makeText(context,"选择文件夹异常，请向开发者反馈问题。", Toast.LENGTH_LONG).show()
+      } catch (e: Exception) {
+        Toast.makeText(context, "选择文件夹异常，请向开发者反馈问题。", Toast.LENGTH_LONG).show()
         emptyList<String>()
       }
       val filePath = subList.joinToString("/")
@@ -145,4 +145,8 @@ fun MaterialDialog.folderChooser(
   }
 
   return this
+}
+fun MaterialDialog.getDirectorTreePath(): String {
+  val directoryTree: RecyclerView = findViewById(R.id.directory_tree)
+  return (directoryTree.adapter as PathAdapter).pathComponents.joinToString("/")
 }

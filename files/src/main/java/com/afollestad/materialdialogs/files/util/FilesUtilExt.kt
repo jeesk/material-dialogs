@@ -149,7 +149,6 @@ fun queryStorage(ctx: Context): List<String> {
   val maps = mutableMapOf<Long, String>()
   if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.O) {
     maps.putAll(queryAlbumV25ForBothUser(ctx, rootDir))
-    //        } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
   } else {
     val bundle =
       Bundle().apply {
@@ -187,15 +186,28 @@ fun queryStorage(ctx: Context): List<String> {
       }
     }
   }
+
   val paths = mutableSetOf<String>()
   maps.entries.forEach {
     val path = it.value
-    val toOkioPath = File(path).canonicalPath
-      .split("/").filter { obj -> obj != "" }
-    if (toOkioPath.size == 2) {
-      paths.add(path)
+    // 获取规范路径并分割
+    val canonicalPath = File(path).canonicalPath
+    val pathParts = canonicalPath.split("/").filter { part -> part.isNotEmpty() }
+
+    when {
+      // 正好是2级目录，直接添加
+      pathParts.size == 2 -> {
+        paths.add("/${pathParts[0]}/${pathParts[1]}")
+      }
+
+      // 大于等于2级，截取前两级
+      pathParts.size >= 2 -> {
+        val twoLevelPath = "/${pathParts[0]}/${pathParts[1]}"
+        paths.add(twoLevelPath)
+      }
     }
   }
+
   return paths.toMutableList()
 }
 

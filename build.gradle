@@ -7,8 +7,8 @@ buildscript {
     mavenCentral()
     maven { url 'https://jitpack.io' }
     mavenLocal()
-    maven { url 'https://nexus.lk.pgyer.eu.org/repository/repository_android/' }
-    maven { url "https://nexus.lk.pgyer.eu.org/repository/google-android-maven/" }
+    google()
+    jcenter()
   }
 
   dependencies {
@@ -26,8 +26,8 @@ allprojects {
     )
     maven { url 'https://jitpack.io' }
     mavenLocal()
-    maven { url 'https://nexus.lk.pgyer.eu.org/repository/repository_android/' }
-    maven { url "https://nexus.lk.pgyer.eu.org/repository/google-android-maven/" }
+    google()
+    jcenter()
   }
 }
 

@@ -153,19 +153,37 @@ internal class FileChooserAdapter(
       dialog.title(text = directory.friendlyName(dialog.context))
       val result = withContext(IO) {
         var rawContents = directory.listFiles() ?: emptyArray()
-        if(rawContents.size == 0){
-          if(directory.name == "storage"){
-            rawContents = arrayOf(Environment.getExternalStorageDirectory().parentFile)
-          }
+        val queryFiles = mutableListOf<File>()
+        // 只有在访问 storage 目录时才查询外部存储
+        if (rawContents.isEmpty() && directory.name == "storage") {
+          rawContents = arrayOf(Environment.getExternalStorageDirectory().parentFile)
+
+          // 查询非当前用户空间的存储设备（SD卡等）
+          val queryNotCurrentUserSpace = queryStorage(dialog.context)
+          queryFiles.addAll(
+            queryNotCurrentUserSpace.mapNotNull { path ->
+              try {
+                File(path).takeIf { it.exists() }
+              } catch (e: Exception) {
+                null
+              }
+            }
+          )
         }
+        // 合并两个列表并去重（根据绝对路径去重）
+        val allFiles = (rawContents.asList() + queryFiles).distinctBy {
+          it.canonicalPath
+        }
+
         if (onlyFolders) {
-          rawContents
+          allFiles
             .filter {
-              it.isDirectory && (filter?.invoke(it)  ?: true || it.canonicalPath == Environment.getExternalStorageDirectory().parentFile.canonicalPath)
+              it.isDirectory && (filter?.invoke(it) ?: true ||
+                  it.canonicalPath == Environment.getExternalStorageDirectory().parentFile.canonicalPath)
             }
             .sortedBy { it.name.toLowerCase(Locale.getDefault()) }
         } else {
-          rawContents
+          allFiles
             .filter { filter?.invoke(it) ?: true }
             .sortedWith(compareBy({ !it.isDirectory }, {
               it.nameWithoutExtension.toLowerCase(Locale.getDefault())
