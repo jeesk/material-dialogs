@@ -61,6 +61,7 @@ fun MaterialDialog.folderChooser(
   waitForPositiveButton: Boolean = true,
   emptyTextRes: Int = R.string.files_default_empty_text,
   allowFolderCreation: Boolean = false,
+  createFolderEnter: Boolean,
   @StringRes folderCreationLabel: Int? = null,
   selection: FileCallback = null
 ): MaterialDialog {
@@ -105,6 +106,7 @@ fun MaterialDialog.folderChooser(
     onlyFolders = true,
     filter = actualFilter,
     allowFolderCreation = allowFolderCreation,
+    createFolderEnter = createFolderEnter,
     folderCreationLabel = folderCreationLabel,
     callback = selection
   )

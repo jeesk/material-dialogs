@@ -73,6 +73,7 @@ internal class FileChooserAdapter(
   private val onlyFolders: Boolean,
   private val filter: FileFilter,
   private val allowFolderCreation: Boolean,
+  private val createFolderEnter: Boolean,
   @StringRes private val folderCreationLabel: Int?,
   private val callback: FileCallback
 ) : RecyclerView.Adapter<FileChooserViewHolder>() {
@@ -107,7 +108,12 @@ internal class FileChooserAdapter(
         folderCreationLabel = folderCreationLabel
       ) {
         // Refresh view
-        switchDirectory(currentFolder)
+        // 新创建文件后，直接进去
+        if (createFolderEnter) {
+          switchDirectory(it)
+        } else {
+          switchDirectory(currentFolder)
+        }
       }
       return
     }

@@ -54,6 +54,7 @@ import com.afollestad.materialdialogs.datetime.dateTimePicker
 import com.afollestad.materialdialogs.datetime.timePicker
 import com.afollestad.materialdialogs.files.fileChooser
 import com.afollestad.materialdialogs.files.folderChooser
+import com.afollestad.materialdialogs.files.getDirectorTreePath
 import com.afollestad.materialdialogs.input.input
 import com.afollestad.materialdialogs.lifecycle.lifecycleOwner
 import com.afollestad.materialdialogs.list.listItems
@@ -870,8 +871,10 @@ class MainActivity : AppCompatActivity() {
   private fun showFolderChooserButtons() = runWithPermissions(WRITE_EXTERNAL_STORAGE) {
     val ss = Environment.getExternalStorageDirectory()
     MaterialDialog(this).show {
-      folderChooser(context = this@MainActivity, initialDirectory = ss, allowFolderCreation = true) { _, folder ->
+      folderChooser(context = this@MainActivity, waitForPositiveButton = true, initialDirectory = ss, allowFolderCreation = true, createFolderEnter = true) { _, folder ->
         toast("Selected folder: ${folder.absolutePath}")
+        val directorTreePath = this.getDirectorTreePath()
+        println(directorTreePath)
       }
       negativeButton(android.R.string.cancel)
       positiveButton(R.string.select)
@@ -883,6 +886,7 @@ class MainActivity : AppCompatActivity() {
   private fun showFolderChooserFilter() = runWithPermissions(READ_EXTERNAL_STORAGE) {
     MaterialDialog(this).show {
       folderChooser(
+        createFolderEnter = true,
           context = this@MainActivity, allowFolderCreation = true, filter = { it.name.startsWith("a", true) }) { _, folder ->
         toast("Selected folder: ${folder.absolutePath}")
       }

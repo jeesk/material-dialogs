@@ -67,6 +67,7 @@ fun MaterialDialog.fileChooser(
   waitForPositiveButton: Boolean = true,
   emptyTextRes: Int = R.string.files_default_empty_text,
   allowFolderCreation: Boolean = false,
+  createFolderEnter: Boolean = false,
   @StringRes folderCreationLabel: Int? = null,
   selection: FileCallback = null
 ): MaterialDialog {
@@ -105,6 +106,7 @@ fun MaterialDialog.fileChooser(
       onlyFolders = false,
       filter = actualFilter,
       allowFolderCreation = allowFolderCreation,
+      createFolderEnter = createFolderEnter,
       folderCreationLabel = folderCreationLabel,
       callback = selection
   )
@@ -126,13 +128,14 @@ fun MaterialDialog.fileChooser(
 internal fun MaterialDialog.showNewFolderCreator(
   parent: File,
   @StringRes folderCreationLabel: Int?,
-  onCreation: () -> Unit
+  onCreation: (file: File) -> Unit
 ) {
   val dialog = MaterialDialog(windowContext).show {
     title(folderCreationLabel ?: R.string.files_new_folder)
     input(hintRes = R.string.files_new_folder_hint) { _, input ->
-      File(parent, input.toString().trim()).mkdir()
-      onCreation()
+      val file = File(parent, input.toString().trim())
+      file.mkdir()
+      onCreation(file)
     }
   }
   dialog.getInputField()
